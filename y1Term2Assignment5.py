@@ -108,7 +108,7 @@ class Charges:
         diffs = self._pos - a_xy
         
         squared_limit = limit**2
-        dist_squared = np.einsum("ijkl,ijkl->ijk", diffs, diffs) # fast method of getting mod^2
+        dist_squared = np.einsum("ij,ij->ij", diffs, diffs) # fast method of getting mod^2
         
         return np.argmin(dist_squared[dist_squared<=squared_limit])
         # End of Task 1; proceed to task 2.
@@ -140,7 +140,15 @@ class Charges:
 
         '''
         # TODO: Assignment Task 2: write function body
-        pass
+        # Coulomb's Law: E = k*q/r^2
+        # k can be neglected as unitless, just need to find scaling factor lambda
+        
+        a_xy = np.array(xy)
+        r = a_xy - self._pos
+        dists = np.linalg.norm(r)
+        E = (self._q/(dists**3)) * r # multiply by r and use **3 to make r_hat
+        E_total = np.sum(E)
+        
         # End of Task 2; proceed to task 3.
 
     def field_lines(self, nr_of_fieldlines=32, start_radius=0.2, lambda_max=10, points=801):
