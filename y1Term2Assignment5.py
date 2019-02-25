@@ -103,7 +103,14 @@ class Charges:
             If no charge is within the limit then None is returned.
         '''
         # TODO: Assignment Task 1: write function body
-        pass
+        a_xy = np.array(xy)
+        
+        diffs = self._pos - a_xy
+        
+        squared_limit = limit**2
+        dist_squared = np.einsum("ijkl,ijkl->ijk", diffs, diffs) # fast method of getting mod^2
+        
+        return np.argmin(dist_squared[dist_squared<=squared_limit])
         # End of Task 1; proceed to task 2.
 
     def scaled_electric_field(self, xy, _):
