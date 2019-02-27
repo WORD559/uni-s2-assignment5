@@ -108,7 +108,7 @@ class Charges:
         diffs = self._pos - a_xy
         
         squared_limit = limit**2
-        dist_squared = np.einsum("ij,ij->ij", diffs, diffs) # fast method of getting mod^2
+        dist_squared = np.einsum("ij,ij->i", diffs, diffs) # fast method of getting mod^2
         
         return np.argmin(dist_squared[dist_squared<=squared_limit])
         # End of Task 1; proceed to task 2.
