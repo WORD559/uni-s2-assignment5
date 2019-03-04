@@ -106,11 +106,12 @@ class Charges:
         a_xy = np.array(xy)
         
         diffs = self._pos - a_xy
+        dist = np.linalg.norm(diffs, axis=1)
         
-        squared_limit = limit**2
-        dist_squared = np.dot(diffs, diffs) # fast method of getting mod^2
-        
-        return np.argmin(dist_squared[dist_squared<=squared_limit])
+        mindex = np.argmin(dist)
+        if dist[mindex] <= limit:
+            return mindex
+        return None
         # End of Task 1; proceed to task 2.
 
     def scaled_electric_field(self, xy, _):
@@ -145,7 +146,8 @@ class Charges:
         
         a_xy = np.array(xy)
         r = a_xy - self._pos
-        dists = np.linalg.norm(r, axis=1)+0.00001
+##        dists = np.linalg.norm(r, axis=1)#+0.00001
+        dists = np.sum(r**2, axis=1)**0.5
 
         mod_E = self._q/(dists**2) # lacks direction
         #mod_E /= (4*np.pi*8.854187817e-12)
@@ -154,13 +156,13 @@ class Charges:
         E = mod_E[:, np.newaxis] * r_hat
         
         E_total = np.sum(E, axis=0)
-
         #return E_total
 
         # dV/dlambda = 1, dV/dr dr/dlamda = 1
         # dV/dr = -E, so dr/dlambda = -1/E, so vector must have magnitude 1/E
-        mod_E_squared = np.dot(E_total, E_total)
-        E_s = (E_total)/(mod_E_squared+0.0001)
+        #print (E_total.shape)
+        mod_E_squared = np.sum(E_total**2)#np.dot(E_total, E_total)
+        E_s = (E_total)/(0.0001+mod_E_squared)
         return E_s
         # End of Task 2; proceed to task 3.
 
@@ -196,10 +198,11 @@ class Charges:
         fieldlines = []
         for i in range(self._pos.shape[0]):
             x,y = self._pos[i]
-            for angle in np.linspace(step, 2*np.pi, nr_of_fieldlines):
+            for angle in np.linspace(step, 2*np.pi, nr_of_fieldlines) +2*np.pi/nr_of_fieldlines/2:
                 r = start_radius
                 y0 = [r*np.sin(angle)+x, r*np.cos(angle)+y]
                 if self._q[i] < 0:
+                    continue # Can be commented out to enable plotting lines for - charges
                     MAX = 0
                     MIN = lambda_max
                 else:
@@ -255,7 +258,7 @@ class MyMplWidget(FigureCanvas):
         self.field_lines_args = None            # used to save the parameters for use in drag_replt
         self.charges = Charges()
         # add some charges to start with an example
-        self.charges.add_charge(1, (1, 0))
+        self.charges.add_charge(5, (1, 0))
         self.charges.add_charge(1, (-1, 0))
         self.charges.add_charge(-1, (0, 1))
         self.charges.add_charge(-1, (0, -1))
@@ -274,15 +277,23 @@ class MyMplWidget(FigureCanvas):
         self.points = []        # list of matplotlib lines in the plot showing the charges (for drag_replot)
         self.field_lines_args = (nr_of_fieldlines, start_radius, lambda_max, points)
         # TODO: Assignment Task 4: calculate and plot field lines; plot charges; collect lines and points
-        for line in self.charges.field_lines(nr_of_fieldlines, start_radius, lambda_max, points):
-            self.ax.plot(line[:, 0], line[:, 1], "k", zorder=-1)
+        # Ideally do lambda_max as a function of largest charge
+        charges = self.charges.get_charges()
+        largest_charge = np.abs(np.max([i[0] for i in charges]))
+        self.field_lines_args = list(self.field_lines_args)
+        self.field_lines_args[2] *= largest_charge
+        self.field_lines_args = tuple(self.field_lines_args)
+        for line in self.charges.field_lines(*self.field_lines_args):
+            self.lines.append(self.ax.plot(line[:, 0], line[:, 1], "k", zorder=-1))
 
-        for charge in self.charges.get_charges():
+        for charge in charges:
             if charge[0] < 0:
                 colour = "b"
             else:
                 colour = "r"
-            self.ax.scatter(charge[1][0], charge[1][1], marker="o", c=colour, s=np.abs(charge[0])*30, zorder=1)
+            self.points.append(self.ax.scatter(charge[1][0], charge[1][1],
+                                               marker="o", c=colour,
+                                               s=np.abs(charge[0])*30, zorder=1))
 
         # End of Task 4; proceed to task 5.
         self.ax.set_xlabel('$x$')
@@ -299,7 +310,12 @@ class MyMplWidget(FigureCanvas):
         '''
         self.ax.draw_artist(self.ax.patch)                              # <-- redraw the plotting area of the axis
         # TODO: Assignment Task 5: redraw updated field lines and charges
-        pass
+        charges = self.charges.get_charges()
+        for k, p in enumerate(self.points):
+            if p.get_offsets()[0].all() != charges[k][1].all():
+                print(charges[k])
+                p.set_offsets(np.array([charges[k][1]]))
+                print (p.get_offsets())
         # End of Task 5; proceed to task 6.
         self.fig.canvas.update()                                        # <-- update the figure
         self.fig.canvas.flush_events()                                  # <-- ensure all draw requests are sent out
@@ -319,7 +335,24 @@ class MyMplWidget(FigureCanvas):
 
         '''
         # TODO: Assignment Task 6: write function body
-        pass
+        CHARGE_SCALE_FACTOR = 1
+        xy = (event.xdata, event.ydata)
+        if self.dragging and self.closest_k is not None:
+            # moving a charge
+            self.main_window.statusBar().showMessage(f"Moving charge {self.closest_k}, "+\
+                                      f"Position: {xy}")
+            self.charges.set_position(self.closest_k, xy)
+            self.drag_replot()
+        elif self.dragging and self.closest_k is None:
+            # adding a charge
+            radius = np.sqrt((xy[0]-self.mouse_pressed_pos[0])**2 +\
+                             (xy[1]-self.mouse_pressed_pos[1])**2)
+            self.qadd = CHARGE_SCALE_FACTOR*radius
+            self.main_window.statusBar().showMessage(f"Adding new charge, charge: {self.qadd:.2f}")
+        elif self.mouse_pressed_pos is not None:
+            self.dragging = True
+            if self.closest_k is not None: # first time moving charge -- make new lines
+                self.plot_fieldlines(nr_of_fieldlines=8)
         # End of Task 5; proceed to task 6.
 
     def on_mouse_press(self, event):
@@ -328,7 +361,10 @@ class MyMplWidget(FigureCanvas):
             and the index of of the charge closest to that position, respectively.
         '''
         # TODO: Assignment Task 7: write function body
-        pass
+        self.mouse_pressed_pos = (event.xdata, event.ydata)
+        self.closest_k = self.charges.get_closest(self.mouse_pressed_pos)
+        if self.closest_k is not None:
+            self.main_window.statusBar().showMessage(f"Selected charge {self.closest_k}")
         # End of Task 7; proceed to task 7.
 
     def on_mouse_release(self, event):
@@ -341,7 +377,16 @@ class MyMplWidget(FigureCanvas):
         and reset attributes as appropriate.
         '''
         # TODO: Assignment Task 8: write function body
-        pass
+        if not self.dragging and self.closest_k is not None:
+            self.charges.delete_charge(self.closest_k)
+            self.main_window.statusBar().showMessage(f"Deleted charge {self.closest_k}")
+        elif self.dragging and self.closest_k is None and self.qadd != 0:
+            self.charges.add_charge(self.qadd, self.mouse_pressed_pos)
+        self.dragging = False
+        self.closest_k = None
+        self.mouse_pressed_pos = None
+        self.qadd = 0
+        self.plot_fieldlines()
         # End of Task 8; no further tasks
 
 
