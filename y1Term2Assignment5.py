@@ -108,7 +108,7 @@ class Charges:
         diffs = self._pos - a_xy
         
         squared_limit = limit**2
-        dist_squared = np.einsum("ij,ij->i", diffs, diffs) # fast method of getting mod^2
+        dist_squared = np.dot(diffs, diffs) # fast method of getting mod^2
         
         return np.argmin(dist_squared[dist_squared<=squared_limit])
         # End of Task 1; proceed to task 2.
@@ -145,10 +145,23 @@ class Charges:
         
         a_xy = np.array(xy)
         r = a_xy - self._pos
-        dists = np.linalg.norm(r)
-        E = (self._q/(dists**3)) * r # multiply by r and use **3 to make r_hat
-        E_total = np.sum(E)
+        dists = np.linalg.norm(r, axis=1)+0.00001
+
+        mod_E = self._q/(dists**2) # lacks direction
+        #mod_E /= (4*np.pi*8.854187817e-12)
+
+        r_hat = r/(dists[:, np.newaxis])
+        E = mod_E[:, np.newaxis] * r_hat
         
+        E_total = np.sum(E, axis=0)
+
+        #return E_total
+
+        # dV/dlambda = 1, dV/dr dr/dlamda = 1
+        # dV/dr = -E, so dr/dlambda = -1/E, so vector must have magnitude 1/E
+        mod_E_squared = np.dot(E_total, E_total)
+        E_s = (E_total)/(mod_E_squared+0.0001)
+        return E_s
         # End of Task 2; proceed to task 3.
 
     def field_lines(self, nr_of_fieldlines=32, start_radius=0.2, lambda_max=10, points=801):
@@ -179,7 +192,21 @@ class Charges:
                 the x and y values, respectively of the k-th fieldline
         '''
         # TODO: Assignment Task 3: write function body
-        pass
+        step = (2*np.pi)/nr_of_fieldlines
+        fieldlines = []
+        for i in range(self._pos.shape[0]):
+            x,y = self._pos[i]
+            for angle in np.linspace(step, 2*np.pi, nr_of_fieldlines):
+                r = start_radius
+                y0 = [r*np.sin(angle)+x, r*np.cos(angle)+y]
+                if self._q[i] < 0:
+                    MAX = 0
+                    MIN = lambda_max
+                else:
+                    MAX = lambda_max
+                    MIN = 0
+                fieldlines.append(odeint(self.scaled_electric_field, y0, np.linspace(MIN,MAX,points)))
+        return fieldlines
         # End of Task 3; proceed to task 4.
 
 
@@ -247,7 +274,16 @@ class MyMplWidget(FigureCanvas):
         self.points = []        # list of matplotlib lines in the plot showing the charges (for drag_replot)
         self.field_lines_args = (nr_of_fieldlines, start_radius, lambda_max, points)
         # TODO: Assignment Task 4: calculate and plot field lines; plot charges; collect lines and points
-        pass
+        for line in self.charges.field_lines(nr_of_fieldlines, start_radius, lambda_max, points):
+            self.ax.plot(line[:, 0], line[:, 1], "k", zorder=-1)
+
+        for charge in self.charges.get_charges():
+            if charge[0] < 0:
+                colour = "b"
+            else:
+                colour = "r"
+            self.ax.scatter(charge[1][0], charge[1][1], marker="o", c=colour, s=np.abs(charge[0])*30, zorder=1)
+
         # End of Task 4; proceed to task 5.
         self.ax.set_xlabel('$x$')
         self.ax.set_ylabel('$y$')
