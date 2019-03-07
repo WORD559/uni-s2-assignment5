@@ -146,8 +146,8 @@ class Charges:
         
         a_xy = np.array(xy)
         r = a_xy - self._pos
-##        dists = np.linalg.norm(r, axis=1)#+0.00001
-        dists = np.sum(r**2, axis=1)**0.5
+        dists = np.linalg.norm(r, axis=1)#+0.00001
+##        dists = np.sum(r**2, axis=1)**0.5
 
         mod_E = self._q/(dists**2) # lacks direction
         #mod_E /= (4*np.pi*8.854187817e-12)
@@ -161,7 +161,7 @@ class Charges:
         # dV/dlambda = 1, dV/dr dr/dlamda = 1
         # dV/dr = -E, so dr/dlambda = -1/E, so vector must have magnitude 1/E
         #print (E_total.shape)
-        mod_E_squared = np.sum(E_total**2)#np.dot(E_total, E_total)
+        mod_E_squared = np.dot(E_total, E_total)
         E_s = (E_total)/(0.0001+mod_E_squared)
         return E_s
         # End of Task 2; proceed to task 3.
@@ -310,12 +310,7 @@ class MyMplWidget(FigureCanvas):
         '''
         self.ax.draw_artist(self.ax.patch)                              # <-- redraw the plotting area of the axis
         # TODO: Assignment Task 5: redraw updated field lines and charges
-        charges = self.charges.get_charges()
-        for k, p in enumerate(self.points):
-            if p.get_offsets()[0].all() != charges[k][1].all():
-                print(charges[k])
-                p.set_offsets(np.array([charges[k][1]]))
-                print (p.get_offsets())
+        self.plot_fieldlines(8)
         # End of Task 5; proceed to task 6.
         self.fig.canvas.update()                                        # <-- update the figure
         self.fig.canvas.flush_events()                                  # <-- ensure all draw requests are sent out
@@ -336,8 +331,12 @@ class MyMplWidget(FigureCanvas):
         '''
         # TODO: Assignment Task 6: write function body
         CHARGE_SCALE_FACTOR = 1
+        # take copy of clicked position since functions are asynchronous
+        pos = self.mouse_pressed_pos
         xy = (event.xdata, event.ydata)
-        if self.dragging and self.closest_k is not None:
+        if pos is None:
+            return
+        elif self.dragging and self.closest_k is not None:
             # moving a charge
             self.main_window.statusBar().showMessage(f"Moving charge {self.closest_k}, "+\
                                       f"Position: {xy}")
@@ -345,11 +344,11 @@ class MyMplWidget(FigureCanvas):
             self.drag_replot()
         elif self.dragging and self.closest_k is None:
             # adding a charge
-            radius = np.sqrt((xy[0]-self.mouse_pressed_pos[0])**2 +\
-                             (xy[1]-self.mouse_pressed_pos[1])**2)
+            radius = np.sqrt((xy[0]-pos[0])**2 +\
+                             (xy[1]-pos[1])**2)
             self.qadd = CHARGE_SCALE_FACTOR*radius
             self.main_window.statusBar().showMessage(f"Adding new charge, charge: {self.qadd:.2f}")
-        elif self.mouse_pressed_pos is not None:
+        elif pos is not None:
             self.dragging = True
             if self.closest_k is not None: # first time moving charge -- make new lines
                 self.plot_fieldlines(nr_of_fieldlines=8)
