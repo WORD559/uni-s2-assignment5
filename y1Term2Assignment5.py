@@ -404,8 +404,15 @@ class MyMplWidget(FigureCanvas):
         '''
         # TODO: Assignment Task 8: write function body
         if not self.dragging and self.closest_k is not None:
-            self.charges.delete_charge(self.closest_k)
-            self.main_window.statusBar().showMessage(f"Deleted charge {self.closest_k}")
+            ## check button to determine what to do for extra feature
+            if event.button == 1:
+                self.charges.delete_charge(self.closest_k)
+                self.main_window.statusBar().showMessage(f"Deleted charge {self.closest_k}")
+            elif event.button == 3: ## right click -- invert the charge!
+                charge = self.charges.get_charges()[self.closest_k]
+                self.charges.delete_charge(self.closest_k)
+                self.charges.add_charge(-(charge[0]), charge[1])
+                self.main_window.statusBar().showMessage(f"Inverted charge {self.closest_k}")
         elif self.dragging and self.closest_k is None and self.qadd != 0:
             self.charges.add_charge(self.qadd, self.mouse_pressed_pos)
         self.dragging = False
