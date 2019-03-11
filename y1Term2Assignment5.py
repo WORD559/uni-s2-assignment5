@@ -103,11 +103,14 @@ class Charges:
             If no charge is within the limit then None is returned.
         '''
         # TODO: Assignment Task 1: write function body
+        if self._pos.shape[0] == 0:
+            return None
+
         a_xy = np.array(xy)
-        
+
         diffs = self._pos - a_xy
         dist = np.linalg.norm(diffs, axis=1)
-        
+
         mindex = np.argmin(dist)
         if dist[mindex] <= limit:
             return mindex
@@ -143,7 +146,7 @@ class Charges:
         # TODO: Assignment Task 2: write function body
         # Coulomb's Law: E = k*q/r^2
         # k can be neglected as unitless, just need to find scaling factor lambda
-        
+
         a_xy = np.array(xy)
         r = a_xy - self._pos
         dists = np.linalg.norm(r, axis=1)#+0.00001
@@ -154,7 +157,7 @@ class Charges:
 
         r_hat = r/(dists[:, np.newaxis])
         E = mod_E[:, np.newaxis] * r_hat
-        
+
         E_total = np.sum(E, axis=0)
         #return E_total
 
@@ -197,18 +200,24 @@ class Charges:
         step = (2*np.pi)/nr_of_fieldlines
         fieldlines = []
         for i in range(self._pos.shape[0]):
-            x,y = self._pos[i]
-            for angle in np.linspace(step, 2*np.pi, nr_of_fieldlines) +2*np.pi/nr_of_fieldlines/2:
-                r = start_radius
-                y0 = [r*np.sin(angle)+x, r*np.cos(angle)+y]
-                if self._q[i] < 0:
-                    continue # Can be commented out to enable plotting lines for - charges
-                    MAX = 0
-                    MIN = lambda_max
-                else:
+            x, y = self._pos[i]
+            for angle in np.linspace(step, 2*np.pi, nr_of_fieldlines) +np.pi/nr_of_fieldlines:
+                y0 = [start_radius*np.sin(angle)+x,
+                      start_radius*np.cos(angle)+y]
+
+                MAX = 0
+                MIN = 0
+                if self._q[i] > 0:
                     MAX = lambda_max
                     MIN = 0
-                fieldlines.append(odeint(self.scaled_electric_field, y0, np.linspace(MIN,MAX,points)))
+#                else: # Can be uncommented to enable plotting for -ve charges
+#                    MAX = 0
+#                    MIN = lambda_max
+                if MAX != MIN:
+                    fieldlines.append(odeint(self.scaled_electric_field, y0,
+                                             np.linspace(MIN, MAX, points), rtol=1e-2))
+
+
         return fieldlines
         # End of Task 3; proceed to task 4.
 
@@ -277,23 +286,25 @@ class MyMplWidget(FigureCanvas):
         self.points = []        # list of matplotlib lines in the plot showing the charges (for drag_replot)
         self.field_lines_args = (nr_of_fieldlines, start_radius, lambda_max, points)
         # TODO: Assignment Task 4: calculate and plot field lines; plot charges; collect lines and points
-        # Ideally do lambda_max as a function of largest charge
+        # Get lambda_max as a function of largest charge
         charges = self.charges.get_charges()
-        largest_charge = np.abs(np.max([i[0] for i in charges]))
-        self.field_lines_args = list(self.field_lines_args)
-        self.field_lines_args[2] *= largest_charge
-        self.field_lines_args = tuple(self.field_lines_args)
-        for line in self.charges.field_lines(*self.field_lines_args):
-            self.lines.append(self.ax.plot(line[:, 0], line[:, 1], "k", zorder=-1))
+        if charges:
+            largest_charge = np.abs(np.max([i[0] for i in charges]))
+            self.field_lines_args = list(self.field_lines_args)
+            self.field_lines_args[2] *= largest_charge
+            self.field_lines_args = tuple(self.field_lines_args)
 
-        for charge in charges:
-            if charge[0] < 0:
-                colour = "b"
-            else:
-                colour = "r"
-            self.points.append(self.ax.scatter(charge[1][0], charge[1][1],
-                                               marker="o", c=colour,
-                                               s=np.abs(charge[0])*30, zorder=1))
+            for line in self.charges.field_lines(*self.field_lines_args):
+                self.lines.append(self.ax.plot(line[:, 0], line[:, 1], "k", zorder=-1)[0])
+
+            for charge in charges:
+                if charge[0] < 0:
+                    colour = "b"
+                else:
+                    colour = "r"
+                self.points.append(self.ax.scatter(charge[1][0], charge[1][1],
+                                                   marker="o", c=colour,
+                                                   s=np.abs(charge[0])*30, zorder=1))
 
         # End of Task 4; proceed to task 5.
         self.ax.set_xlabel('$x$')
