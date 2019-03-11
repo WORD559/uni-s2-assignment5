@@ -370,10 +370,9 @@ class MyMplWidget(FigureCanvas):
             self.drag_replot()
         elif self.dragging and self.closest_k is None:
             # adding a charge
-            radius = np.sqrt((xy[0]-pos[0])**2 +\
-                             (xy[1]-pos[1])**2)
-            self.qadd = CHARGE_SCALE_FACTOR*radius
-            self.main_window.statusBar().showMessage(f"Adding new charge, charge: {self.qadd:.2f}")
+            radius = xy[0]-pos[0]
+            self.qadd = round(CHARGE_SCALE_FACTOR*radius)
+            self.main_window.statusBar().showMessage(f"Adding new charge, charge: {self.qadd:.0f}")
         # End of Task 5; proceed to task 6.
 
     def on_mouse_press(self, event):
