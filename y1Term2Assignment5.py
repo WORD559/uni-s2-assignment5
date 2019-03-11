@@ -150,10 +150,8 @@ class Charges:
         a_xy = np.array(xy)
         r = a_xy - self._pos
         dists = np.linalg.norm(r, axis=1)#+0.00001
-##        dists = np.sum(r**2, axis=1)**0.5
 
         mod_E = self._q/(dists**2) # lacks direction
-        #mod_E /= (4*np.pi*8.854187817e-12)
 
         r_hat = r/(dists[:, np.newaxis])
         E = mod_E[:, np.newaxis] * r_hat
@@ -163,7 +161,6 @@ class Charges:
 
         # dV/dlambda = 1, dV/dr dr/dlamda = 1
         # dV/dr = -E, so dr/dlambda = -1/E, so vector must have magnitude 1/E
-        #print (E_total.shape)
         mod_E_squared = np.dot(E_total, E_total)
         E_s = (E_total)/(0.0001+mod_E_squared)
         return E_s
@@ -286,9 +283,9 @@ class MyMplWidget(FigureCanvas):
         self.points = []        # list of matplotlib lines in the plot showing the charges (for drag_replot)
         self.field_lines_args = (nr_of_fieldlines, start_radius, lambda_max, points)
         # TODO: Assignment Task 4: calculate and plot field lines; plot charges; collect lines and points
-        # Get lambda_max as a function of largest charge
         charges = self.charges.get_charges()
         if charges:
+            # Get lambda_max as a function of largest charge
             largest_charge = np.abs(np.max([i[0] for i in charges]))
             self.field_lines_args = list(self.field_lines_args)
             self.field_lines_args[2] *= largest_charge
@@ -369,7 +366,7 @@ class MyMplWidget(FigureCanvas):
                                       f"Position: ({xy[0]:.2f}, {xy[1]:.2f})")
             self.charges.set_position(self.closest_k, xy)
             if len(self.lines) > 8*len(self.charges.get_charges()):
-                self.plot_fieldlines(8) ## first run to reduce no. of lines
+                self.plot_fieldlines(8) ## first run to reduce to 8 lines
             self.drag_replot()
         elif self.dragging and self.closest_k is None:
             # adding a charge
@@ -395,10 +392,8 @@ class MyMplWidget(FigureCanvas):
 
     def on_mouse_release(self, event):
         ''' perform required actions when the mouse button is released
-
         If a charge should be deleted, delete the charge.
         If a charge should be added, add the charge.
-
         In all cases, redraw the figure with 32 fieldlines per charge
         and reset attributes as appropriate.
         '''
