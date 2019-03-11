@@ -310,7 +310,18 @@ class MyMplWidget(FigureCanvas):
         '''
         self.ax.draw_artist(self.ax.patch)                              # <-- redraw the plotting area of the axis
         # TODO: Assignment Task 5: redraw updated field lines and charges
-        self.plot_fieldlines(8)
+        args = (8,) + self.field_lines_args[1:]
+
+        new_lines = self.charges.field_lines(*args)
+        for i in range(len(self.lines)):
+            self.lines[i].set_xdata(new_lines[i][:, 0])
+            self.lines[i].set_ydata(new_lines[i][:, 1])
+            self.ax.draw_artist(self.lines[i])
+
+        charges = self.charges.get_charges()
+        for k, charge in enumerate(charges):
+            self.points[k].set_offsets(charge[1])
+            self.ax.draw_artist(self.points[k])
         # End of Task 5; proceed to task 6.
         self.fig.canvas.update()                                        # <-- update the figure
         self.fig.canvas.flush_events()                                  # <-- ensure all draw requests are sent out
@@ -340,12 +351,14 @@ class MyMplWidget(FigureCanvas):
             return
         else:
             self.dragging = True
-            
+
         if self.dragging and self.closest_k is not None:
             # moving a charge
             self.main_window.statusBar().showMessage(f"Moving charge {self.closest_k}, "+\
                                       f"Position: ({xy[0]:.2f}, {xy[1]:.2f})")
             self.charges.set_position(self.closest_k, xy)
+            if len(self.lines) > 8*len(self.charges.get_charges()):
+                self.plot_fieldlines(8) ## first run to reduce no. of lines
             self.drag_replot()
         elif self.dragging and self.closest_k is None:
             # adding a charge
@@ -353,10 +366,6 @@ class MyMplWidget(FigureCanvas):
                              (xy[1]-pos[1])**2)
             self.qadd = CHARGE_SCALE_FACTOR*radius
             self.main_window.statusBar().showMessage(f"Adding new charge, charge: {self.qadd:.2f}")
-##        elif pos is not None:
-##            self.dragging = True
-##            if self.closest_k is not None: # first time moving charge -- make new lines
-##                self.plot_fieldlines(nr_of_fieldlines=8)
         # End of Task 5; proceed to task 6.
 
     def on_mouse_press(self, event):
