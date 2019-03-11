@@ -258,7 +258,7 @@ class MyMplWidget(FigureCanvas):
         self.field_lines_args = None            # used to save the parameters for use in drag_replt
         self.charges = Charges()
         # add some charges to start with an example
-        self.charges.add_charge(5, (1, 0))
+        self.charges.add_charge(1, (1, 0))
         self.charges.add_charge(1, (-1, 0))
         self.charges.add_charge(-1, (0, 1))
         self.charges.add_charge(-1, (0, -1))
@@ -333,13 +333,18 @@ class MyMplWidget(FigureCanvas):
         CHARGE_SCALE_FACTOR = 1
         # take copy of clicked position since functions are asynchronous
         pos = self.mouse_pressed_pos
+        if event.xdata is None: # outside plot
+            return
         xy = (event.xdata, event.ydata)
         if pos is None:
             return
-        elif self.dragging and self.closest_k is not None:
+        else:
+            self.dragging = True
+            
+        if self.dragging and self.closest_k is not None:
             # moving a charge
             self.main_window.statusBar().showMessage(f"Moving charge {self.closest_k}, "+\
-                                      f"Position: {xy}")
+                                      f"Position: ({xy[0]:.2f}, {xy[1]:.2f})")
             self.charges.set_position(self.closest_k, xy)
             self.drag_replot()
         elif self.dragging and self.closest_k is None:
@@ -348,10 +353,10 @@ class MyMplWidget(FigureCanvas):
                              (xy[1]-pos[1])**2)
             self.qadd = CHARGE_SCALE_FACTOR*radius
             self.main_window.statusBar().showMessage(f"Adding new charge, charge: {self.qadd:.2f}")
-        elif pos is not None:
-            self.dragging = True
-            if self.closest_k is not None: # first time moving charge -- make new lines
-                self.plot_fieldlines(nr_of_fieldlines=8)
+##        elif pos is not None:
+##            self.dragging = True
+##            if self.closest_k is not None: # first time moving charge -- make new lines
+##                self.plot_fieldlines(nr_of_fieldlines=8)
         # End of Task 5; proceed to task 6.
 
     def on_mouse_press(self, event):
@@ -360,6 +365,8 @@ class MyMplWidget(FigureCanvas):
             and the index of of the charge closest to that position, respectively.
         '''
         # TODO: Assignment Task 7: write function body
+        if event.xdata is None: # outside plot
+            return
         self.mouse_pressed_pos = (event.xdata, event.ydata)
         self.closest_k = self.charges.get_closest(self.mouse_pressed_pos)
         if self.closest_k is not None:
