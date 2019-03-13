@@ -295,7 +295,7 @@ class MyMplWidget(FigureCanvas):
                 self.lines.append(self.ax.plot(line[:, 0], line[:, 1], "k", zorder=-1)[0])
 
             for charge in charges:
-                if charge[0] < 0:
+                if charge[0] > 0:
                     colour = "b"
                 else:
                     colour = "r"
